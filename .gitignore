@@ -36,3 +36,10 @@ Carthage/Build/
 
 ## macOS
 .DS_Store
+
+# Agent skills & setup
+.claude/
+.agents/
+skills-lock.json
+CLAUDE.md
+docs/agents/
