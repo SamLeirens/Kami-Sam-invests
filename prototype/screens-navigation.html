@@ -1,0 +1,406 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Answers wayfinder ticket #7 "Design: app screens & navigation".
+  Three RADICALLY DIFFERENT navigation models for the iPhone portfolio tracker, each showing
+  the three required screens: Portfolio overview, Per-stock detail, Add/Edit-holding flow.
+  Reacts to the settled domain (EUR base currency, lots, buys-only, buy-neutral € gain line,
+  net dividends). NOT production. NOT SwiftUI. Purely for the human to react to.
+
+  Switch NAV MODEL with the arrows in the floating bottom-left pill (or ← / →).
+  Switch SCREEN with the arrows in the floating bottom-right pill (or [ / ]).
+
+  VERDICT (ticket #7): Model C — swipeable pages (Value ↔ Performance ↔ Income) wins.
+  Detail + add-a-buy screens accepted as shown. Palette flagged as too boring → visual
+  style / theming graduated to its own follow-up ticket (not decided here).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype — Screens & Navigation</title>
+<style>
+  :root{
+    --bg:#f2f2f7; --card:#ffffff; --ink:#1c1c1e; --sub:#8e8e93; --hair:#e5e5ea;
+    --green:#28a745; --greentint:#e7f6ec; --red:#e5484d; --blue:#0a84ff; --accent:#0a84ff;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    background:#3a3a3c;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:28px 12px 120px;gap:14px}
+  .stage-label{color:#fff;opacity:.8;font-size:13px;text-align:center;max-width:390px;line-height:1.5}
+  .stage-label b{opacity:1}
+
+  /* iPhone frame */
+  .phone{width:390px;height:844px;background:#000;border-radius:52px;padding:12px;
+    box-shadow:0 24px 60px rgba(0,0,0,.45);position:relative;flex:0 0 auto}
+  .screen{width:100%;height:100%;background:var(--bg);border-radius:42px;overflow:hidden;position:relative;
+    display:flex;flex-direction:column}
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:126px;height:34px;background:#000;
+    border-radius:20px;z-index:60}
+  .statusbar{height:52px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 26px 6px;font-size:13px;font-weight:600;color:var(--ink)}
+  .body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .body::-webkit-scrollbar{width:0}
+
+  /* generic bits */
+  .navbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 8px}
+  .navbar h1{font-size:30px;font-weight:800;margin:0;letter-spacing:-.5px}
+  .navbar .lg{font-size:34px}
+  .iconbtn{width:34px;height:34px;border-radius:50%;background:var(--card);display:flex;align-items:center;
+    justify-content:center;box-shadow:var(--shadow);font-size:20px;color:var(--accent);cursor:pointer;border:none}
+  .plus{font-weight:400;font-size:24px;line-height:1}
+  .card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:0 16px 14px;padding:16px}
+  .sub{color:var(--sub);font-size:13px}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .pill{display:inline-flex;align-items:center;gap:4px;background:var(--greentint);color:var(--green);
+    font-weight:700;font-size:14px;padding:3px 9px;border-radius:20px}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);cursor:pointer}
+  .row+.row{border-top:1px solid var(--hair)}
+  .tkr{width:40px;height:40px;border-radius:11px;background:#eef1ff;color:#3a4ad6;font-weight:800;font-size:13px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .grow{flex:1;min-width:0}
+  .rowtitle{font-weight:600;font-size:16px}
+  .rowsub{color:var(--sub);font-size:12px;margin-top:2px}
+  .rowright{text-align:right}
+  .rowval{font-weight:600;font-size:16px}
+  .sectionhead{padding:16px 20px 8px;font-size:13px;font-weight:700;color:var(--sub);text-transform:uppercase;
+    letter-spacing:.4px}
+  .grouped{margin:0 16px 14px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .hero-val{font-size:42px;font-weight:800;letter-spacing:-1px}
+  .hero-sub{margin-top:4px;font-size:15px;font-weight:600}
+  .chartwrap{padding:6px 8px 2px}
+  .rangebar{display:flex;justify-content:space-between;padding:8px 20px 4px}
+  .rangebar span{font-size:13px;font-weight:600;color:var(--sub);padding:4px 8px;border-radius:8px}
+  .rangebar span.on{color:#fff;background:var(--accent)}
+
+  /* tab bar (variant A) */
+  .tabbar{flex:0 0 auto;height:84px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);
+    border-top:1px solid var(--hair);display:flex;padding:8px 6px 24px}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--sub);
+    font-weight:600;cursor:pointer}
+  .tab.on{color:var(--accent)}
+  .tab .ic{font-size:22px}
+
+  /* paged dots (variant C) */
+  .dots{display:flex;justify-content:center;gap:7px;padding:10px 0 4px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:#c7c7cc;display:block}
+  .dots i.on{background:var(--accent);width:20px;border-radius:4px}
+  .pagehead{display:flex;gap:18px;padding:8px 20px 2px;font-size:15px;font-weight:700;color:var(--sub)}
+  .pagehead .on{color:var(--ink);position:relative}
+  .pagehead .on:after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:3px;background:var(--accent);
+    border-radius:2px}
+
+  /* floating action button (variant B) */
+  .fab{position:absolute;right:20px;bottom:26px;width:60px;height:60px;border-radius:30px;background:var(--accent);
+    color:#fff;font-size:32px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 20px rgba(10,132,255,.45);z-index:40;cursor:pointer;border:none}
+
+  /* detail */
+  .backbar{display:flex;align-items:center;gap:4px;padding:6px 12px 4px;color:var(--accent);font-weight:600;
+    font-size:17px;cursor:pointer}
+  .kpis{display:flex;gap:10px;margin:0 16px 14px}
+  .kpi{flex:1;background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:12px}
+  .kpi .k{color:var(--sub);font-size:11px;font-weight:600;text-transform:uppercase}
+  .kpi .v{font-size:19px;font-weight:800;margin-top:4px}
+
+  /* form (add/edit) */
+  .sheet-grabber{width:38px;height:5px;border-radius:3px;background:#d0d0d5;margin:10px auto 2px}
+  .formhead{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 6px}
+  .formhead .t{font-size:18px;font-weight:800}
+  .formhead .c{color:var(--accent);font-weight:600;font-size:17px;cursor:pointer}
+  .formhead .s{color:var(--accent);font-weight:800;font-size:17px;cursor:pointer}
+  .field{background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:13px 16px}
+  .field+.field{border-top:1px solid var(--hair)}
+  .field label{font-size:16px}
+  .field .val{color:var(--sub);font-size:16px;text-align:right}
+  .field .val.filled{color:var(--ink);font-weight:600}
+  .hint{padding:8px 20px;color:var(--sub);font-size:12px;line-height:1.5}
+  .segmini{display:flex;background:#e9e9ee;border-radius:9px;padding:2px}
+  .segmini span{padding:5px 10px;font-size:13px;font-weight:600;color:var(--sub);border-radius:7px}
+  .segmini span.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .delrow{margin:18px 16px;text-align:center;color:var(--red);font-weight:600;font-size:16px;background:var(--card);
+    padding:13px;border-radius:14px;box-shadow:var(--shadow);cursor:pointer}
+
+  /* floating controls */
+  .controls{position:fixed;bottom:22px;left:0;right:0;display:flex;justify-content:center;gap:14px;z-index:200;
+    pointer-events:none}
+  .ctl{pointer-events:auto;display:flex;align-items:center;gap:2px;background:#1c1c1e;color:#fff;border-radius:26px;
+    padding:6px 8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .ctl b{font-size:12px;padding:0 8px;min-width:150px;text-align:center;font-weight:700}
+  .ctl button{background:#3a3a3c;color:#fff;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .ctl button:active{background:var(--accent)}
+  .ctl .tag{font-size:9px;color:#8e8e93;position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+    white-space:nowrap;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+  .ctl{position:relative}
+</style>
+</head>
+<body>
+
+<div class="stage-label" id="caption"></div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar"><span>9:41</span><span>􀙇 􀛨 100%</span></div>
+    <div class="body" id="body"></div>
+    <div id="chrome"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="ctl"><span class="tag">Nav model ← →</span>
+    <button onclick="cycleNav(-1)">‹</button><b id="navlbl"></b><button onclick="cycleNav(1)">›</button></div>
+  <div class="ctl"><span class="tag">Screen [ ]</span>
+    <button onclick="cycleScreen(-1)">‹</button><b id="scrlbl"></b><button onclick="cycleScreen(1)">›</button></div>
+</div>
+
+<script>
+/* ---------- sample data (settled domain: EUR base, lots, buys-only) ---------- */
+const P = {
+  value: 24318.50, cost: 20150.00,
+  get gain(){return this.value-this.cost}, get pct(){return this.gain/this.cost*100},
+  ttmIncome: 412.00, yieldOnCost: 2.04,
+  holdings: [
+    {t:"ASML", name:"ASML Holding", ex:"Euronext AMS", sh:12, val:8640, cost:7200, ttm:0},
+    {t:"AAPL", name:"Apple Inc.", ex:"NASDAQ", sh:30, val:6300, cost:4950, ttm:78},
+    {t:"MSFT", name:"Microsoft", ex:"NASDAQ", sh:15, val:5850, cost:5100, ttm:41},
+    {t:"SHEL", name:"Shell plc", ex:"LSE", sh:100, val:2528, cost:2400, ttm:263},
+    {t:"AI", name:"Air Liquide", ex:"Euronext PAR", sh:6, val:1000.5, cost:500, ttm:30},
+  ]
+};
+const eur = n => "€"+n.toLocaleString("en-IE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur0 = n => "€"+n.toLocaleString("en-IE",{maximumFractionDigits:0});
+const sg = n => (n>=0?"+":"−")+eur(Math.abs(n));
+const sp = n => (n>=0?"+":"−")+Math.abs(n).toFixed(1)+"%";
+
+/* buy-neutral € gain/loss line — value minus cost, so deposits never spike it */
+function gainChart(w,h,peak){
+  const pts=[], N=48;
+  for(let i=0;i<N;i++){
+    const x=i/(N-1);
+    const wobble=Math.sin(i*0.5)*0.06+Math.sin(i*0.9)*0.03;
+    const v=(Math.pow(x,1.25)*0.82+wobble+0.06)*peak;
+    pts.push([16+x*(w-32), h-14-(v/peak)*(h-30)]);
+  }
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const area=d+` L${pts[pts.length-1][0].toFixed(1)} ${h} L16 ${h} Z`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#28a745" stop-opacity=".22"/><stop offset="1" stop-color="#28a745" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#g)"/>
+    <path d="${d}" fill="none" stroke="#28a745" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+const ranges = r => `<div class="rangebar">${["1W","1M","3M","6M","YTD","1Y","All"]
+  .map(x=>`<span class="${x===r?'on':''}">${x}</span>`).join("")}</div>`;
+
+/* ---------- reusable fragments ---------- */
+function holdingRow(h){
+  const g=h.val-h.cost, p=g/h.cost*100, cls=g>=0?'pos':'neg';
+  return `<div class="row" onclick="goDetail()">
+    <div class="tkr">${h.t.slice(0,4)}</div>
+    <div class="grow"><div class="rowtitle">${h.name}</div>
+      <div class="rowsub">${h.sh} sh · ${h.ex}</div></div>
+    <div class="rowright"><div class="rowval">${eur(h.val)}</div>
+      <div class="rowsub ${cls}">${sg(g)} · ${sp(p)}</div></div>
+  </div>`;
+}
+const holdingsList = () => `<div class="grouped">${P.holdings.map(holdingRow).join("")}</div>`;
+
+function heroBlock(range="1Y"){
+  return `<div class="card" style="text-align:center">
+    <div class="sub">Portfolio value</div>
+    <div class="hero-val">${eur(P.value)}</div>
+    <div class="hero-sub pos">${sg(P.gain)} · ${sp(P.pct)}</div>
+    <div class="chartwrap">${gainChart(340,150,P.gain)}</div>
+    ${ranges(range)}
+    <div class="sub" style="margin-top:6px">Total gain/loss since first buy</div>
+  </div>`;
+}
+
+/* ============================================================= SCREENS × NAV MODELS */
+
+/* ---- OVERVIEW ---- */
+function overview_A(){ // tab bar
+  return navbar("Portfolio")+heroBlock()+
+    `<div class="sectionhead">Holdings</div>`+holdingsList()+incomeCard();
+}
+function overview_B(){ // single scrolling dashboard, everything on one screen
+  return `<div class="navbar"><h1 class="lg">Portfolio</h1></div>`+
+    heroBlock()+
+    threeUp()+
+    `<div class="sectionhead">Holdings (5)</div>`+holdingsList()+
+    incomeCard()+
+    `<div style="height:90px"></div>`;
+}
+function overview_C(){ // swipeable pages — this page = "Value"
+  return `<div class="pagehead"><span class="on">Value</span><span>Performance</span><span>Income</span></div>`+
+    `<div style="height:6px"></div>`+
+    `<div class="card" style="text-align:center">
+       <div class="sub">Total portfolio value</div>
+       <div class="hero-val">${eur(P.value)}</div>
+       <div class="hero-sub pos">${sg(P.gain)} · ${sp(P.pct)} all-time</div>
+       <div class="chartwrap">${gainChart(340,180,P.gain)}</div>${ranges("1Y")}
+     </div>`+
+    `<div class="sectionhead">Top holdings — swipe up for all</div>`+
+    `<div class="grouped">${P.holdings.slice(0,3).map(holdingRow).join("")}</div>`+
+    `<div class="dots"><i class="on"></i><i></i><i></i></div>`;
+}
+function threeUp(){
+  return `<div class="kpis">
+    <div class="kpi"><div class="k">Invested</div><div class="v">${eur0(P.cost)}</div></div>
+    <div class="kpi"><div class="k">Gain</div><div class="v pos">${sg(P.gain).replace(".00","")}</div></div>
+    <div class="kpi"><div class="k">Income TTM</div><div class="v">${eur0(P.ttmIncome)}</div></div>
+  </div>`;
+}
+function incomeCard(){
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="rowtitle">Dividend income</div><div class="sub">Last 12 months (net)</div></div>
+      <div class="rowright"><div class="rowval">${eur(P.ttmIncome)}</div>
+        <div class="sub">${P.yieldOnCost}% yield on cost</div></div>
+    </div></div>`;
+}
+
+/* ---- DETAIL (Apple) ---- */
+function detail(){
+  const h=P.holdings[1], g=h.val-h.cost;
+  return `<div class="backbar" onclick="goOverview()">‹ Portfolio</div>`+
+    `<div class="navbar" style="padding-top:0"><h1>${h.name}</h1>
+       <div class="iconbtn" onclick="goAdd()">✎</div></div>`+
+    `<div class="card" style="text-align:center">
+       <div class="sub">Current value · ${h.sh} shares</div>
+       <div class="hero-val">${eur(h.val)}</div>
+       <div class="hero-sub pos">${sg(g)} · ${sp(g/h.cost*100)}</div>
+       <div class="chartwrap">${gainChart(340,130,g)}</div>${ranges("6M")}
+     </div>`+
+    `<div class="kpis">
+       <div class="kpi"><div class="k">Avg cost</div><div class="v">${eur(h.cost/h.sh)}</div></div>
+       <div class="kpi"><div class="k">Last price</div><div class="v">${eur(h.val/h.sh)}</div></div>
+       <div class="kpi"><div class="k">Income TTM</div><div class="v">${eur(h.ttm)}</div></div>
+     </div>`+
+    `<div class="sectionhead">Lots (buys)</div>`+
+    `<div class="grouped">
+       ${lotRow("12 Mar 2024","10 sh","€150.00","€1,500.00")}
+       ${lotRow("04 Sep 2024","20 sh","€172.50","€3,450.00")}
+     </div>`+
+    `<div class="sectionhead">Dividends</div>`+
+    `<div class="grouped">
+       ${divRow("15 May 2025","confirmed","€39.00")}
+       ${divRow("14 Feb 2025","confirmed","€39.00")}
+       ${divRow("13 Nov 2024","suggested — tap to confirm","€38.20",true)}
+     </div><div style="height:20px"></div>`;
+}
+function lotRow(d,sh,px,tot){
+  return `<div class="row" onclick="goAdd()"><div class="grow">
+     <div class="rowtitle">${d}</div><div class="rowsub">${sh} @ ${px}/sh</div></div>
+     <div class="rowright"><div class="rowval">${tot}</div><div class="rowsub">cost basis</div></div></div>`;
+}
+function divRow(d,status,amt,pending){
+  return `<div class="row"><div class="grow"><div class="rowtitle">${d}</div>
+     <div class="rowsub" style="${pending?'color:var(--blue)':''}">${status}</div></div>
+     <div class="rowright"><div class="rowval ${pending?'':'pos'}">${amt}</div>
+     <div class="rowsub">net</div></div></div>`;
+}
+
+/* ---- ADD / EDIT HOLDING (modal sheet) ---- */
+function addSheet(){
+  return `<div style="height:100%;display:flex;flex-direction:column;background:var(--bg)">
+    <div class="sheet-grabber"></div>
+    <div class="formhead"><span class="c" onclick="goOverview()">Cancel</span>
+      <span class="t">Add a buy</span><span class="s" onclick="goOverview()">Save</span></div>
+    <div class="hint">One record per purchase (a “lot”). Enter what you actually paid, in EUR.</div>
+    <div class="grouped" style="margin-top:6px">
+      ${field("Ticker","AAPL — Apple Inc.",true)}
+      ${field("Exchange","NASDAQ",true)}
+    </div>
+    <div class="grouped">
+      ${field("Shares","20",true)}
+      ${field("Price / share","€172.50",true)}
+      ${field("Date","4 Sep 2024",true)}
+      ${field("Fees (optional)","€1.50",true)}
+    </div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="rowtitle">Total cost</div><div class="sub">shares × price + fees</div></div>
+      <div class="rowval">€3,451.50</div>
+    </div>
+    <div class="hint">Prices &amp; dividends for this ticker are fetched automatically after saving.
+      Native-currency stocks are converted to EUR at today’s rate.</div>
+    <div class="delrow" onclick="goOverview()">Delete this lot</div>
+  </div>`;
+}
+function field(label,val,filled){
+  return `<div class="field"><label>${label}</label>
+    <div class="val ${filled?'filled':''}">${val} ${filled?'':'›'}</div></div>`;
+}
+
+/* ---- shared navbar with + button (variants A & C) ---- */
+function navbar(title){
+  return `<div class="navbar"><h1>${title}</h1>
+    <div class="iconbtn plus" onclick="goAdd()">+</div></div>`;
+}
+
+/* ---------- chrome (bottom app furniture) per nav model ---------- */
+function chrome_A(){ // tab bar
+  const tab=(ic,l,on,fn)=>`<div class="tab ${on?'on':''}" onclick="${fn}">
+    <div class="ic">${ic}</div><div>${l}</div></div>`;
+  return `<div class="tabbar">
+    ${tab("􀑀","Portfolio",screen!=='detail',"goOverview()")}
+    ${tab("􀋲","Income",false,"")}
+    ${tab("􀣔","Insights",false,"")}
+    ${tab("􀍟","Settings",false,"")}
+  </div>`;
+}
+function chrome_B(){ // FAB, no tab bar
+  return screen==='add' ? "" : `<button class="fab" onclick="goAdd()">+</button>`;
+}
+function chrome_C(){ return ""; } // paged; add reached via nav "+"
+
+/* ============================================================= state machine */
+const NAVS=[
+  {key:"A",name:"Bottom tab bar",  ov:overview_A, chrome:chrome_A,
+   cap:"<b>A — Bottom tab bar.</b> Classic iOS. Four top-level surfaces (Portfolio / Income / Insights / Settings); overview is a scroll, drill into a holding, add via <b>+</b> in the nav bar. Familiar, room to grow, but income/insights split off the main view."},
+  {key:"B",name:"Single dashboard", ov:overview_B, chrome:chrome_B,
+   cap:"<b>B — Single scrolling dashboard.</b> No tabs. Everything — value, chart, KPIs, holdings, income — on one long scroll. Drill into a holding for detail; add via floating <b>+</b>. Fastest glance, but no obvious home for future sections."},
+  {key:"C",name:"Swipeable pages", ov:overview_C, chrome:chrome_C,
+   cap:"<b>C — Swipeable pages.</b> Top-level is a horizontal pager: Value ↔ Performance ↔ Income (dots at bottom). Each page is its own focused dashboard. Playful and glanceable, but drilling in + adding compete with the swipe gesture."},
+];
+const SCREENS=[
+  {key:"overview",name:"Overview"},
+  {key:"detail",name:"Stock detail"},
+  {key:"add",name:"Add / edit"},
+];
+let nav=0, screen="overview";
+
+function render(){
+  const N=NAVS[nav];
+  const body=document.getElementById("body");
+  const chrome=document.getElementById("chrome");
+  if(screen==='add'){ body.innerHTML=addSheet(); chrome.innerHTML=""; }
+  else if(screen==='detail'){ body.innerHTML=detail(); chrome.innerHTML=N.chrome(); }
+  else { body.innerHTML=N.ov(); chrome.innerHTML=N.chrome(); }
+  document.getElementById("navlbl").textContent=N.key+" — "+N.name;
+  document.getElementById("scrlbl").textContent=SCREENS.find(s=>s.key===screen).name;
+  document.getElementById("caption").innerHTML=N.cap;
+  body.scrollTop=0;
+}
+function goOverview(){screen="overview";render();}
+function goDetail(){screen="detail";render();}
+function goAdd(){screen="add";render();}
+function cycleNav(d){nav=(nav+d+NAVS.length)%NAVS.length;render();}
+function cycleScreen(d){
+  const i=SCREENS.findIndex(s=>s.key===screen);
+  screen=SCREENS[(i+d+SCREENS.length)%SCREENS.length].key;render();
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft")cycleNav(-1);
+  if(e.key==="ArrowRight")cycleNav(1);
+  if(e.key==="[")cycleScreen(-1);
+  if(e.key==="]")cycleScreen(1);
+});
+render();
+</script>
+</body>
+</html>
