@@ -1,0 +1,272 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Answers wayfinder ticket #10 "Design: visual style & theming".
+  The Model C layout (chosen in #7: swipeable Value/Performance/Income pages) rendered in
+  FOUR radically different visual styles, so the boring placeholder palette can be replaced.
+  Each theme varies palette + typography + gain/loss colour language + chart treatment +
+  density + card shape — not just hue. NOT production. Purely to react to.
+
+  Switch THEME with the bottom-left pill (or ← / →).
+  Switch SCREEN (overview / detail) with the bottom-right pill (or [ / ]).
+
+  VERDICT (ticket #10): Theme 4 — SLATE wins. Warm dark neutrals (sand/charcoal), single
+  teal accent + terracotta losses, thin type, generous whitespace, understated line.
+  Worth stealing from others: Terminal's monospaced tabular numerals for column alignment.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype — Visual Style & Theming</title>
+<style>
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#2b2b2e;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:24px 12px 120px;gap:14px}
+  .caption{color:#fff;opacity:.85;font-size:13px;text-align:center;max-width:400px;line-height:1.5}
+  .caption b{opacity:1}
+
+  .phone{width:390px;height:844px;background:#000;border-radius:52px;padding:12px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);flex:0 0 auto}
+  .device{width:100%;height:100%;border-radius:42px;overflow:hidden;position:relative;display:flex;
+    flex-direction:column;transition:background .25s}
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:32px;background:#000;
+    border-radius:18px;z-index:60}
+  .statusbar{height:50px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 26px 6px;font-size:13px;font-weight:600}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden}
+  .scroll::-webkit-scrollbar{width:0}
+
+  /* ---- theme-driven skeleton (all colours/shape from CSS vars) ---- */
+  .device{
+    background:var(--bg); color:var(--ink); font-family:var(--font);
+  }
+  .num{font-family:var(--numfont);font-feature-settings:var(--numfeat)}
+  .pagetabs{display:flex;gap:var(--tabgap);padding:10px 22px 4px;font-size:15px;font-weight:700;color:var(--sub)}
+  .pagetabs .on{color:var(--ink);position:relative}
+  .pagetabs .on:after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:3px;background:var(--accent);
+    border-radius:2px}
+  .hero{margin:var(--gap);padding:var(--pad);background:var(--card);border-radius:var(--radius);
+    box-shadow:var(--shadow);border:var(--border);text-align:var(--heroalign)}
+  .lbl{color:var(--sub);font-size:12px;font-weight:600;letter-spacing:var(--track);text-transform:var(--caps)}
+  .big{font-size:var(--bigsize);font-weight:var(--bigweight);letter-spacing:var(--bigtrack);line-height:1.05;
+    margin:6px 0 2px}
+  .delta{font-size:15px;font-weight:700}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .chip{display:inline-block;padding:3px 10px;border-radius:var(--chiprad);background:var(--upbg);color:var(--up);
+    font-weight:700;font-size:14px}
+  .ranges{display:flex;justify-content:space-between;margin-top:12px}
+  .ranges span{font-size:12px;font-weight:700;color:var(--sub);padding:4px 8px;border-radius:8px}
+  .ranges .on{color:var(--onaccent);background:var(--accent)}
+  .sect{padding:16px 24px 8px;font-size:12px;font-weight:700;color:var(--sub);letter-spacing:var(--track);
+    text-transform:var(--caps)}
+  .list{margin:var(--gap);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:var(--border)}
+  .item{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--card)}
+  .item+.item{border-top:1px solid var(--hair)}
+  .tkr{width:40px;height:40px;border-radius:var(--tkrrad);background:var(--tkrbg);color:var(--tkrink);font-weight:800;
+    font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .grow{flex:1;min-width:0}
+  .name{font-weight:600;font-size:16px}
+  .meta{color:var(--sub);font-size:12px;margin-top:2px}
+  .right{text-align:right}
+  .val{font-weight:700;font-size:16px}
+  .dots{display:flex;justify-content:center;gap:7px;padding:12px 0 6px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--hair);display:block}
+  .dots i.on{background:var(--accent);width:20px;border-radius:4px}
+  .kpis{display:flex;gap:10px;margin:var(--gap)}
+  .kpi{flex:1;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:var(--border);
+    padding:12px}
+  .kpi .k{color:var(--sub);font-size:10px;font-weight:700;letter-spacing:var(--track);text-transform:var(--caps)}
+  .kpi .v{font-size:18px;font-weight:800;margin-top:4px}
+  .back{padding:8px 16px 2px;color:var(--accent);font-weight:600;font-size:16px}
+  .subtle{color:var(--sub);font-size:12px}
+  .plus{width:34px;height:34px;border-radius:var(--tkrrad);background:var(--accent);color:var(--onaccent);
+    display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:400}
+  .toprow{display:flex;align-items:center;justify-content:space-between;padding:2px 22px 0}
+
+  /* controls */
+  .controls{position:fixed;bottom:22px;left:0;right:0;display:flex;justify-content:center;gap:14px;z-index:200;
+    pointer-events:none}
+  .ctl{pointer-events:auto;display:flex;align-items:center;gap:2px;background:#1c1c1e;color:#fff;border-radius:26px;
+    padding:6px 8px;box-shadow:0 8px 24px rgba(0,0,0,.4);position:relative}
+  .ctl b{font-size:12px;padding:0 8px;min-width:140px;text-align:center;font-weight:700}
+  .ctl button{background:#3a3a3c;color:#fff;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;
+    cursor:pointer}
+  .ctl button:active{background:#666}
+  .ctl .tag{font-size:9px;color:#8e8e93;position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+    white-space:nowrap;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="caption" id="caption"></div>
+<div class="phone"><div class="notch"></div>
+  <div class="device" id="device">
+    <div class="statusbar num"><span>9:41</span><span>􀙇 100%</span></div>
+    <div class="scroll" id="scroll"></div>
+  </div>
+</div>
+<div class="controls">
+  <div class="ctl"><span class="tag">Theme ← →</span>
+    <button onclick="cycleT(-1)">‹</button><b id="tlbl"></b><button onclick="cycleT(1)">›</button></div>
+  <div class="ctl"><span class="tag">Screen [ ]</span>
+    <button onclick="cycleS(-1)">‹</button><b id="slbl"></b><button onclick="cycleS(1)">›</button></div>
+</div>
+
+<script>
+/* ---------------- data (settled EUR/lots/buys-only domain) ---------------- */
+const P={value:24318.50,cost:20150.00,gain:4168.50,pct:20.7,ttm:412,yoc:2.04,
+ holdings:[
+  {t:"ASML",name:"ASML Holding",ex:"Euronext AMS",sh:12,val:8640,g:1440,p:20.0},
+  {t:"AAPL",name:"Apple Inc.",ex:"NASDAQ",sh:30,val:6300,g:1350,p:27.3},
+  {t:"MSFT",name:"Microsoft",ex:"NASDAQ",sh:15,val:5850,g:750,p:14.7},
+  {t:"SHEL",name:"Shell plc",ex:"LSE",sh:100,val:2528,g:128,p:5.3},
+  {t:"AI",name:"Air Liquide",ex:"Euronext PAR",sh:6,val:1000.5,g:500.5,p:100.1},
+]};
+const eur=n=>"€"+n.toLocaleString("en-IE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur0=n=>"€"+n.toLocaleString("en-IE",{maximumFractionDigits:0});
+const sg=n=>(n>=0?"+":"−")+eur(Math.abs(n));
+const sp=n=>(n>=0?"+":"−")+Math.abs(n).toFixed(1)+"%";
+
+/* ---------------- chart treatments (per theme) ---------------- */
+function pts(peak,h,w,N){const a=[];for(let i=0;i<N;i++){const x=i/(N-1);
+  const wob=Math.sin(i*0.5)*0.06+Math.sin(i*0.9)*0.03;
+  const v=(Math.pow(x,1.25)*0.82+wob+0.06);a.push([16+x*(w-32),h-14-v*(h-30)]);}return a;}
+function chartArea(col,w=340,h=150){const a=pts(1,h,w,48);
+  const d=a.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const ar=d+` L${a.at(-1)[0].toFixed(1)} ${h} L16 ${h} Z`;const id="ga"+Math.random().toString(36).slice(2,7);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+   <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stop-color="${col}" stop-opacity=".26"/><stop offset="1" stop-color="${col}" stop-opacity="0"/>
+   </linearGradient></defs><path d="${ar}" fill="url(#${id})"/>
+   <path d="${d}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+function chartThin(col,grid,w=340,h=150){const a=pts(1,h,w,60);
+  const d=a.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  let g="";for(let y=1;y<4;y++){const yy=h*y/4;g+=`<line x1="16" y1="${yy}" x2="${w-16}" y2="${yy}" stroke="${grid}" stroke-width="1"/>`;}
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">${g}
+   <path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"
+   style="filter:drop-shadow(0 0 4px ${col}90)"/></svg>`;}
+function chartBars(col,w=340,h=150){const a=pts(1,h,w,26);let b="";
+  a.forEach((p,i)=>{const bw=(w-32)/a.length*0.62;b+=`<rect x="${p[0]-bw/2}" y="${p[1]}" width="${bw}"
+   height="${h-p[1]}" rx="2" fill="${col}" opacity="${0.4+0.6*i/a.length}"/>`;});
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${b}</svg>`;}
+function chartBold(col,w=340,h=150){const a=pts(1,h,w,40);
+  const d=a.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+   <path d="${d}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+
+/* ---------------- themes ---------------- */
+const THEMES=[
+ {key:"Aurora", chart:v=>chartArea(v["--up"],340,150),
+  cap:"<b>Aurora.</b> Soft, friendly consumer-fintech — pastel off-white, rounded cards, a violet accent with muted sage/rose gains & losses, large rounded type. Calm and approachable (Copilot / Monarch vibe).",
+  v:{"--bg":"#f5f6fb","--card":"#ffffff","--ink":"#1a1c2e","--sub":"#8a8fa3","--hair":"#eceef4",
+   "--accent":"#6c5ce7","--onaccent":"#fff","--up":"#2fae74","--down":"#e57a7a","--upbg":"#e6f6ee",
+   "--font":"-apple-system,'SF Pro Rounded',system-ui,sans-serif","--numfont":"inherit","--numfeat":"'tnum'",
+   "--radius":"22px","--pad":"18px","--gap":"16px","--shadow":"0 2px 8px rgba(30,30,60,.06),0 12px 30px rgba(30,30,60,.05)",
+   "--border":"none","--bigsize":"44px","--bigweight":"800","--bigtrack":"-1px","--track":".2px","--caps":"none",
+   "--heroalign":"center","--chiprad":"20px","--tkrrad":"12px","--tkrbg":"#eef0ff","--tkrink":"#5b52d6","--tabgap":"18px"}},
+
+ {key:"Terminal", chart:v=>chartThin(v["--up"],"#1c2530",340,150),
+  cap:"<b>Terminal.</b> Dark, dense, data-forward pro tool — near-black, hairline borders, monospaced tabular numerals, cyan accent, punchy green/red, a thin glowing line over a grid. Serious-investor energy (Bloomberg-lite).",
+  v:{"--bg":"#0b0e13","--card":"#141a22","--ink":"#e7ecf3","--sub":"#6b7787","--hair":"#20293380",
+   "--accent":"#22d3ee","--onaccent":"#04141a","--up":"#16c784","--down":"#ea3943","--upbg":"#0f2a24",
+   "--font":"'SF Pro Text',system-ui,sans-serif","--numfont":"ui-monospace,'SF Mono',Menlo,monospace","--numfeat":"'tnum'",
+   "--radius":"12px","--pad":"16px","--gap":"12px","--shadow":"none","--border":"1px solid #1e2732",
+   "--bigsize":"40px","--bigweight":"700","--bigtrack":"-.5px","--track":".8px","--caps":"uppercase",
+   "--heroalign":"left","--chiprad":"6px","--tkrrad":"8px","--tkrbg":"#1b2530","--tkrink":"#7fdfff","--tabgap":"16px"}},
+
+ {key:"Vivid", chart:v=>chartBold(v["--up"],340,150),
+  cap:"<b>Vivid.</b> Bold editorial — warm cream paper, near-black ink, one confident emerald accent, huge heavy display numbers, chunky cards, a thick line. High-contrast and energetic without going neon (Robinhood, grown up).",
+  v:{"--bg":"#fbf8f1","--card":"#ffffff","--ink":"#14140f","--sub":"#8c887c","--hair":"#efe9dd",
+   "--accent":"#0f7a4d","--onaccent":"#fff","--up":"#0f7a4d","--down":"#d1452b","--upbg":"#dff0e6",
+   "--font":"'SF Pro Display',system-ui,sans-serif","--numfont":"inherit","--numfeat":"'tnum'",
+   "--radius":"26px","--pad":"20px","--gap":"16px","--shadow":"0 3px 0 rgba(20,20,15,.06)",
+   "--border":"1.5px solid #14140f","--bigsize":"52px","--bigweight":"900","--bigtrack":"-1.5px","--track":".4px",
+   "--caps":"uppercase","--heroalign":"left","--chiprad":"8px","--tkrrad":"14px","--tkrbg":"#14140f",
+   "--tkrink":"#fbf8f1","--tabgap":"20px"}},
+
+ {key:"Slate", chart:v=>chartThin(v["--up"],"#2a2622",340,150),
+  cap:"<b>Slate.</b> Warm, quiet, minimal — sandy dark neutrals, a single teal accent with terracotta losses, thin type, generous whitespace, an understated line. Restrained and premium (Muji-calm).",
+  v:{"--bg":"#1c1a17","--card":"#26231f","--ink":"#efe9df","--sub":"#8c8578","--hair":"#332f29",
+   "--accent":"#3fb6a4","--onaccent":"#08201c","--up":"#4fc0ad","--down":"#d98a6a","--upbg":"#16302c",
+   "--font":"'SF Pro Text',system-ui,sans-serif","--numfont":"inherit","--numfeat":"'tnum'",
+   "--radius":"18px","--pad":"20px","--gap":"16px","--shadow":"none","--border":"1px solid #332f29",
+   "--bigsize":"42px","--bigweight":"600","--bigtrack":"-.5px","--track":"1px","--caps":"uppercase",
+   "--heroalign":"center","--chiprad":"20px","--tkrrad":"12px","--tkrbg":"#332f29","--tkrink":"#9fe3d6","--tabgap":"18px"}},
+];
+
+/* ---------------- screens (Model C) ---------------- */
+function overview(t){
+  const rng=["1W","1M","3M","6M","YTD","1Y","All"].map(x=>`<span class="${x==="1Y"?"on":""}">${x}</span>`).join("");
+  return `<div class="toprow"><div class="pagetabs" style="padding-left:0">
+      <span class="on">Value</span><span>Performance</span><span>Income</span></div>
+      <div class="plus">+</div></div>
+    <div class="hero">
+      <div class="lbl">Total portfolio value</div>
+      <div class="big num">${eur(P.value)}</div>
+      <div class="delta up num">${sg(P.gain)} · ${sp(P.pct)} all-time</div>
+      <div style="margin-top:12px">${t.chart(t.v)}</div>
+      <div class="ranges">${rng}</div>
+    </div>
+    <div class="sect">Holdings</div>
+    <div class="list">${P.holdings.map(h=>`
+      <div class="item"><div class="tkr">${h.t}</div>
+        <div class="grow"><div class="name">${h.name}</div><div class="meta">${h.sh} sh · ${h.ex}</div></div>
+        <div class="right"><div class="val num">${eur(h.val)}</div>
+          <div class="meta up num">${sg(h.g)} · ${sp(h.p)}</div></div></div>`).join("")}
+    </div>
+    <div class="dots"><i class="on"></i><i></i><i></i></div>
+    <div style="height:16px"></div>`;
+}
+function detail(t){
+  const h=P.holdings[1];
+  const rng=["1W","1M","3M","6M","YTD","1Y","All"].map(x=>`<span class="${x==="6M"?"on":""}">${x}</span>`).join("");
+  return `<div class="back">‹ Portfolio</div>
+    <div class="toprow"><div style="font-size:26px;font-weight:800;padding:2px 0">${h.name}</div><div class="plus">✎</div></div>
+    <div class="hero">
+      <div class="lbl">Current value · ${h.sh} shares</div>
+      <div class="big num">${eur(h.val)}</div>
+      <div class="delta up num">${sg(h.g)} · ${sp(h.p)}</div>
+      <div style="margin-top:12px">${t.chart(t.v)}</div><div class="ranges">${rng}</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Avg cost</div><div class="v num">€165.00</div></div>
+      <div class="kpi"><div class="k">Last price</div><div class="v num">€210.00</div></div>
+      <div class="kpi"><div class="k">Income TTM</div><div class="v num">€78.00</div></div></div>
+    <div class="sect">Lots (buys)</div>
+    <div class="list">
+      <div class="item"><div class="grow"><div class="name">12 Mar 2024</div><div class="meta">10 sh @ €150.00/sh</div></div>
+        <div class="right"><div class="val num">€1,500.00</div><div class="meta">cost basis</div></div></div>
+      <div class="item"><div class="grow"><div class="name">04 Sep 2024</div><div class="meta">20 sh @ €172.50/sh</div></div>
+        <div class="right"><div class="val num">€3,450.00</div><div class="meta">cost basis</div></div></div></div>
+    <div class="sect">Dividends</div>
+    <div class="list">
+      <div class="item"><div class="grow"><div class="name">15 May 2025</div><div class="meta">confirmed</div></div>
+        <div class="right"><div class="val up num">€39.00</div><div class="meta">net</div></div></div>
+      <div class="item"><div class="grow"><div class="name">13 Nov 2024</div>
+        <div class="meta" style="color:var(--accent)">suggested — tap to confirm</div></div>
+        <div class="right"><div class="val num">€38.20</div><div class="meta">net</div></div></div></div>
+    <div style="height:18px"></div>`;
+}
+
+/* ---------------- state ---------------- */
+const SCREENS=[{k:"overview",n:"Overview",f:overview},{k:"detail",n:"Stock detail",f:detail}];
+let ti=0, si=0;
+function render(){
+  const t=THEMES[ti], s=SCREENS[si], dev=document.getElementById("device");
+  Object.entries(t.v).forEach(([k,val])=>dev.style.setProperty(k,val));
+  dev.querySelector(".statusbar").style.color=t.v["--ink"];
+  document.getElementById("scroll").innerHTML=s.f(t);
+  document.getElementById("scroll").scrollTop=0;
+  document.getElementById("tlbl").textContent=(ti+1)+" — "+t.key;
+  document.getElementById("slbl").textContent=s.n;
+  document.getElementById("caption").innerHTML=t.cap;
+}
+function cycleT(d){ti=(ti+d+THEMES.length)%THEMES.length;render();}
+function cycleS(d){si=(si+d+SCREENS.length)%SCREENS.length;render();}
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft")cycleT(-1); if(e.key==="ArrowRight")cycleT(1);
+  if(e.key==="[")cycleS(-1); if(e.key==="]")cycleS(1);});
+render();
+</script>
+</body>
+</html>
